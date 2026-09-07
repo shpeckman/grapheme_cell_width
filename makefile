@@ -6,11 +6,13 @@ UNICODE_VERSION ?= 17.0.0
 SOURCES := $(wildcard src/grapheme_cell_width.cr src/grapheme_cell_width/*.cr)
 
 .PHONY: all setup spec spec-debug bench bench-width bench-grapheme verify \
-        gen-tables gen-tests docs format format-check clean clean-full
+        gen-tables docs format format-check clean clean-full
 
-all: setup
+all: gen-tables verify
 
-setup: gen-tables gen-tests spec
+gen-tables:
+	$(CRYSTAL) run tools/gen_tables.cr -- --version $(UNICODE_VERSION)
+	$(CRYSTAL) run tools/gen_grapheme_tests.cr -- --version $(UNICODE_VERSION)
 
 spec:
 	$(CRYSTAL) spec
@@ -31,21 +33,6 @@ widths.tsv: $(SOURCES) tools/dump_widths.cr
 
 verify: widths.tsv
 	$(PYTHON) tools/verify.py widths.tsv
-
-gen-tables:
-	$(CRYSTAL) run tools/gen_tables.cr -- --version $(UNICODE_VERSION)
-
-gen-tests:
-	$(CRYSTAL) run tools/gen_grapheme_tests.cr -- --version $(UNICODE_VERSION)
-
-docs:
-	$(CRYSTAL) docs
-
-format:
-	$(CRYSTAL) tool format src spec bench tools
-
-format-check:
-	$(CRYSTAL) tool format --check src spec bench tools
 
 clean:
 	rm -f widths.tsv
