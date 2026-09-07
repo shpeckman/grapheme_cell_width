@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 # tools/verify.py
 import sys
-import unicodedata as ud
+
+try:
+    import unicodedata2 as ud
+    REFERENCE = "unicodedata2"
+except ImportError:
+    import unicodedata as ud
+    REFERENCE = "unicodedata"
+
+TARGET_DEFAULT = "17.0.0"
 
 EXPLICIT_ZERO = [
     (0x200B, 0x200D),
@@ -37,6 +45,14 @@ def into_ranges(cps):
 
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else "widths.tsv"
+    target = sys.argv[2] if len(sys.argv) > 2 else TARGET_DEFAULT
+
+    if ud.unidata_version != target:
+        sys.exit(
+            f"error: reference UCD {ud.unidata_version} ({REFERENCE}) != target {target}\n"
+            f"install matching reference data: pip install 'unicodedata2=={target}.*'"
+        )
+
     mismatches = []
     checked = 0
     with open(path) as f:
@@ -47,7 +63,7 @@ def main():
                 mismatches.append((cp, got, expected(cp)))
             checked += 1
 
-    print(f"unicodedata UCD version: {ud.unidata_version}")
+    print(f"reference: {REFERENCE} UCD {ud.unidata_version}")
     print(f"checked {checked} scalar values, {len(mismatches)} mismatches")
 
     if mismatches:
@@ -58,6 +74,7 @@ def main():
         for (got, exp), cps in sorted(by_kind.items()):
             for first, last in into_ranges(cps):
                 print(f"  U+{first:04X}..U+{last:04X}  shard={got}  python={exp}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

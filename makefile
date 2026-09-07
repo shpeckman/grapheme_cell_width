@@ -32,7 +32,8 @@ widths.tsv: $(SOURCES) tools/dump_widths.cr
 	$(CRYSTAL) run tools/dump_widths.cr -- $@
 
 verify: widths.tsv
-	$(PYTHON) tools/verify.py widths.tsv
+	@echo "unicodedata2 is needed to successfully run this test (install via `pip install unicodedata2`)\n"
+	$(PYTHON) tools/verify.py widths.tsv $(UNICODE_VERSION)
 
 clean:
 	rm -f widths.tsv
