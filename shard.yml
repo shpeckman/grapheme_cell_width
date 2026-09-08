@@ -13,4 +13,7 @@ description: |
 
 crystal: ">= 1.10.0"
 
+scripts:
+  postinstall: make gen-tables
+
 license: MIT
