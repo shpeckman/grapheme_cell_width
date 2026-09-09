@@ -23,7 +23,7 @@ CORPORA.each do |name, text|
     bytes += text.bytesize
     break if Time.instant - start >= 1.second
   end
-  secs = (Time.instant - start).total_seconds
+  secs     = (Time.instant - start).total_seconds
   clusters = 0
   GraphemeCellWidth.each_cluster(text) { |_| clusters += 1 }
   printf "%-8s %8.0f MiB/s  (%5d B span -> %4d clusters)\n",

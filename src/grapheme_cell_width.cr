@@ -66,13 +66,13 @@ module GraphemeCellWidth
       validate_contract!(bytes)
     {% end %}
 
-    width = 0
-    i = 0
-    size = bytes.size
-    ptr = bytes.to_unsafe
-    joined = false
+    width      = 0
+    i          = 0
+    size       = bytes.size
+    ptr        = bytes.to_unsafe
+    joined     = false
     prev_emoji = false
-    prev_zwj = false
+    prev_zwj   = false
 
     while i < size
       swar_start = i
@@ -83,9 +83,9 @@ module GraphemeCellWidth
         i += 8
       end
       if i > swar_start
-        joined = false
+        joined     = false
         prev_emoji = false
-        prev_zwj = false
+        prev_zwj   = false
         if i < size && ptr[i] == 0xEF_u8 && vs16_follows?(ptr, i, size) &&
            in_ranges?(ptr[i - 1].to_u32, VS16_WIDE)
           width += 1
@@ -101,19 +101,19 @@ module GraphemeCellWidth
         end
         prev_emoji = false
         i += 1
-        joined = false
+        joined   = false
         prev_zwj = false
       else
         cp, len = decode(ptr, i)
         if cp == 0x200D_u32
-          joined = prev_emoji && !prev_zwj
+          joined   = prev_emoji && !prev_zwj
           prev_zwj = true
         else
-          entry = char_width_entry(cp)
+          entry      = char_width_entry(cp)
           emoji_join = joined && (entry & WIDTH_EXTPICT_BIT) != 0
           zwj_failed = joined && !emoji_join
-          joined = false
-          prev_zwj = false
+          joined     = false
+          prev_zwj   = false
           unless emoji_join
             w = (entry & 0x3_u8).to_i
             vs16_widened = w == 1 && (entry & WIDTH_VS16_BIT) != 0 &&
@@ -157,12 +157,12 @@ module GraphemeCellWidth
 
     cp, len = decode(ptr, 0)
     prev_gcb, ep, incb = classify(cp)
-    ri_count = prev_gcb == GCB_RI ? 1 : 0
-    ext_run = ep
-    zwj_armed = false
-    incb_state = incb == INCB_CONSONANT ? 1 : 0
+    ri_count      = prev_gcb == GCB_RI ? 1 : 0
+    ext_run       = ep
+    zwj_armed     = false
+    incb_state    = incb == INCB_CONSONANT ? 1 : 0
     cluster_start = 0
-    i = len
+    i             = len
 
     while i < size
       if prev_gcb == GCB_OTHER && ri_count == 0 && !ext_run && !zwj_armed &&
@@ -180,7 +180,7 @@ module GraphemeCellWidth
           i += 1
         end
         run_end = i - 1
-        k = run_start
+        k       = run_start
         while k < run_end
           yield bytes[k, 1]
           k += 1
@@ -195,10 +195,10 @@ module GraphemeCellWidth
       if boundary?(prev_gcb, gcb, ep, ri_count, zwj_armed, incb, incb_state)
         yield bytes[cluster_start, i - cluster_start]
         cluster_start = i
-        ri_count = 0
-        ext_run = false
-        zwj_armed = false
-        incb_state = 0
+        ri_count      = 0
+        ext_run       = false
+        zwj_armed     = false
+        incb_state    = 0
       end
 
       if gcb == GCB_RI
@@ -207,22 +207,22 @@ module GraphemeCellWidth
         ri_count = 0
       end
       if ep
-        ext_run = true
+        ext_run   = true
         zwj_armed = false
       elsif gcb == GCB_EXTEND
         zwj_armed = false if zwj_armed
       elsif gcb == GCB_ZWJ && ext_run
         zwj_armed = true
-        ext_run = false
+        ext_run   = false
       else
-        ext_run = false
+        ext_run   = false
         zwj_armed = false
       end
       case incb
       when INCB_CONSONANT then incb_state = 1
       when INCB_LINKER    then incb_state = 2 if incb_state >= 1
-      when INCB_EXTEND    then
-      else                     incb_state = 0
+      when INCB_EXTEND
+      else incb_state = 0
       end
 
       prev_gcb = gcb
@@ -346,8 +346,8 @@ module GraphemeCellWidth
   end
 
   private def validate_contract!(bytes : Slice(UInt8)) : Nil
-    ptr = bytes.to_unsafe
-    i = 0
+    ptr  = bytes.to_unsafe
+    i    = 0
     size = bytes.size
     while i < size
       b = ptr[i]

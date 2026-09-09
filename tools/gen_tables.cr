@@ -20,8 +20,8 @@ module GenTables
   INCB_SHIFT  = 5
 
   def run
-    version = "17.0.0"
-    out_path = "src/grapheme_cell_width/tables.cr"
+    version      = "17.0.0"
+    out_path     = "src/grapheme_cell_width/tables.cr"
     grapheme_out = "src/grapheme_cell_width/grapheme_tables.cr"
     dir : String? = nil
 
@@ -36,11 +36,11 @@ module GenTables
 
     eaw, dgc, emoji, gbp, dcp = load_sources(version, dir)
 
-    zero = BitArray.new(MAX_CP + 1)
-    wide = BitArray.new(MAX_CP + 1)
-    emoji_yes = BitArray.new(MAX_CP + 1)
+    zero       = BitArray.new(MAX_CP + 1)
+    wide       = BitArray.new(MAX_CP + 1)
+    emoji_yes  = BitArray.new(MAX_CP + 1)
     emoji_pres = BitArray.new(MAX_CP + 1)
-    extpict = BitArray.new(MAX_CP + 1)
+    extpict    = BitArray.new(MAX_CP + 1)
 
     parse_ranges(eaw) do |first, last, fields|
       prop = fields[1]
@@ -63,11 +63,11 @@ module GenTables
     end
 
     {
-      {0x200B_u32, 0x200D_u32},
-      {0x2060_u32, 0x2060_u32},
-      {0xFEFF_u32, 0xFEFF_u32},
-      {0x1160_u32, 0x11FF_u32},
-      {0xD7B0_u32, 0xD7FF_u32},
+      {0x200B_u32,  0x200D_u32},
+      {0x2060_u32,  0x2060_u32},
+      {0xFEFF_u32,  0xFEFF_u32},
+      {0x1160_u32,  0x11FF_u32},
+      {0xD7B0_u32,  0xD7FF_u32},
       {0x1F3FB_u32, 0x1F3FF_u32},
       {0xE0001_u32, 0xE007F_u32},
     }.each { |(first, last)| fill(zero, first, last) }
@@ -114,7 +114,7 @@ module GenTables
 
   def two_level(flat : Bytes) : {Array(Int32), Array(Bytes)}
     unique_pages = [] of Bytes
-    index = [] of Int32
+    index        = [] of Int32
     ((MAX_CP + 1) // 256).times do |page|
       bytes = flat[page * 256, 256]
       if found = unique_pages.index { |u| u == bytes }
@@ -174,7 +174,7 @@ module GenTables
   end
 
   def fill(bits : BitArray, first : UInt32, last : UInt32) : Nil
-    cp = first.to_i
+    cp   = first.to_i
     stop = last.to_i
     while cp <= stop
       bits[cp] = true
@@ -183,7 +183,7 @@ module GenTables
   end
 
   def fill_bytes(bytes : Bytes, first : UInt32, last : UInt32, value : UInt8) : Nil
-    cp = first.to_i
+    cp   = first.to_i
     stop = last.to_i
     while cp <= stop
       bytes[cp] = value
@@ -193,8 +193,8 @@ module GenTables
 
   def ranges(bits : BitArray) : Array({UInt32, UInt32})
     result = [] of {UInt32, UInt32}
-    cp = 0
-    max = bits.size
+    cp     = 0
+    max    = bits.size
     while cp < max
       if bits[cp]
         first = cp

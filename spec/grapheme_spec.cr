@@ -77,7 +77,7 @@ describe "GraphemeCellWidth grapheme clusters" do
     end
 
     it "yields zero-copy views into the span" do
-      span = "日本語"
+      span  = "日本語"
       bytes = span.to_slice
       GraphemeCellWidth.each_cluster(span) do |cluster|
         offset = cluster.to_unsafe - bytes.to_unsafe
@@ -102,15 +102,15 @@ describe "GraphemeCellWidth grapheme clusters" do
   end
 
   it "passes the UCD GraphemeBreakTest suite (contract-valid subset)" do
-    tests = 0
+    tests    = 0
     failures = [] of String
 
     File.each_line("spec/fixtures/GraphemeBreakTest.txt") do |line|
       next unless line.starts_with?('÷')
       tokens = line.split('#', 2)[0].split
 
-      cps = [] of UInt32
-      break_before = [] of Bool
+      cps           = [] of UInt32
+      break_before  = [] of Bool
       pending_break = true
       tokens.each do |token|
         case token
@@ -123,7 +123,7 @@ describe "GraphemeCellWidth grapheme clusters" do
       end
 
       expected = [] of String
-      current = [] of UInt32
+      current  = [] of UInt32
       cps.each_with_index do |cp, k|
         if k > 0 && break_before[k]
           expected << String.build { |io| current.each { |c| io << c.chr } }
@@ -133,7 +133,7 @@ describe "GraphemeCellWidth grapheme clusters" do
       end
       expected << String.build { |io| current.each { |c| io << c.chr } } unless current.empty?
 
-      str = String.build { |io| cps.each { |cp| io << cp.chr } }
+      str    = String.build { |io| cps.each { |cp| io << cp.chr } }
       actual = clusters_of(str)
 
       unless actual == expected

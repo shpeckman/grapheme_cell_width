@@ -2,7 +2,7 @@
 require "http/client"
 require "option_parser"
 
-version = "17.0.0"
+version  = "17.0.0"
 out_path = "spec/fixtures/GraphemeBreakTest.txt"
 
 OptionParser.parse do |parser|
@@ -21,7 +21,7 @@ body = HTTP::Client.get(url) do |response|
   response.body_io.gets_to_end
 end
 
-kept = 0
+kept    = 0
 skipped = 0
 Dir.mkdir_p(File.dirname(out_path))
 File.open(out_path, "w") do |file|
@@ -31,7 +31,7 @@ File.open(out_path, "w") do |file|
   body.each_line do |line|
     next unless line.starts_with?('÷')
     tokens = line.split('#', 2)[0].split
-    cps = tokens.select { |t| t.matches?(/\A[0-9A-Fa-f]+\z/) }.map(&.to_u32(16))
+    cps    = tokens.select { |t| t.matches?(/\A[0-9A-Fa-f]+\z/) }.map(&.to_u32(16))
     if cps.any? { |cp| cp < 0x20_u32 || (0x7F_u32..0x9F_u32).covers?(cp) }
       skipped += 1
     else

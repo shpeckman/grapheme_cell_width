@@ -153,7 +153,7 @@ describe GraphemeCellWidth do
 
   describe ".each_line" do
     it "streams lines from an IO" do
-      io = IO::Memory.new("foo\n日本語\n")
+      io        = IO::Memory.new("foo\n日本語\n")
       collected = [] of {String, Int32}
       GraphemeCellWidth.each_line(io) { |line, w| collected << {line, w} }
       collected.should eq [{"foo", 3}, {"日本語", 6}]
