@@ -8,7 +8,10 @@ SOURCES := $(wildcard src/grapheme_cell_width.cr src/grapheme_cell_width/*.cr)
 .PHONY: all setup spec spec-debug bench bench-width bench-grapheme verify \
         gen-tables docs format format-check clean clean-full
 
-all: gen-tables verify
+all: setup
+
+setup:
+	@$(CRYSTAL) run tools/gen_tables.cr -- --version $(UNICODE_VERSION)
 
 gen-tables:
 	@echo -e "\n==> Generating width and grapheme tables for Unicode $(UNICODE_VERSION)..."
