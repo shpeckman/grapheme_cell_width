@@ -26,7 +26,7 @@ require "./grapheme_cell_width/grapheme_tables"
 # All measurement is allocation-free: spans are read in place and never
 # copied, so the same `String`/`Slice` you hand in is what streams out.
 module GraphemeCellWidth
-  VERSION = "0.5.0"
+  VERSION = {{ `shards version "#{__DIR__}/../.."`.chomp.stringify }}
 
   extend self
 
