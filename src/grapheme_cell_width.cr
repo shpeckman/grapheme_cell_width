@@ -23,6 +23,11 @@ require "./grapheme_cell_width/grapheme_tables"
 #     or a regional-indicator pair (🇺🇸)               -> one 2-cell cluster
 #   * everything else                                -> 1 cell
 #
+# Grapheme mode (`Mode::Grapheme`) models terminals that size whole clusters:
+# a cluster is as wide as its widest scalar, a VS16 base widens to 2, an
+# emoji-presentation base followed by VS15 narrows to 1, a leading skin-tone
+# modifier is 2 and a regional-indicator pair is 2.
+#
 # All measurement is allocation-free: spans are read in place and never
 # copied, so the same `String`/`Slice` you hand in is what streams out.
 module GraphemeCellWidth
@@ -30,9 +35,21 @@ module GraphemeCellWidth
 
   extend self
 
+  enum Mode : UInt8
+    Wcwidth
+    Grapheme
+  end
+
   private WIDTH_EXTPICT_BIT = 0x20_u8
   private WIDTH_VS16_BIT    = 0x40_u8
   private WIDTH_EMOJI_BIT   = 0x80_u8
+
+  private VS15           =  0xFE0E_u32
+  private VS16           =  0xFE0F_u32
+  private MODIFIER_FIRST = 0x1F3FB_u32
+  private MODIFIER_LAST  = 0x1F3FF_u32
+  private RI_FIRST       = 0x1F1E6_u32
+  private RI_LAST        = 0x1F1FF_u32
 
   private GCB_OTHER   =  0_u8
   private GCB_CR      =  1_u8
@@ -59,6 +76,17 @@ module GraphemeCellWidth
 
   def measure(span : String) : Int32
     measure(span.to_slice)
+  end
+
+  def measure(span : String, mode : Mode) : Int32
+    measure(span.to_slice, mode)
+  end
+
+  def measure(bytes : Slice(UInt8), mode : Mode) : Int32
+    return measure(bytes) if mode.wcwidth?
+    total = 0
+    each_cluster(bytes) { |cluster| total += cluster_width(cluster) }
+    total
   end
 
   def measure(bytes : Slice(UInt8)) : Int32
@@ -135,6 +163,44 @@ module GraphemeCellWidth
         i += len
       end
     end
+    width
+  end
+
+  def cluster_width(cluster : String) : Int32
+    cluster_width(cluster.to_slice)
+  end
+
+  def cluster_width(cluster : Slice(UInt8)) : Int32
+    size = cluster.size
+    return 0 if size == 0
+    ptr = cluster.to_unsafe
+
+    base, len = decode(ptr, 0)
+    entry     = char_width_entry(base)
+    width     = (entry & 0x3_u8).to_i
+    width     = 2 if MODIFIER_FIRST <= base <= MODIFIER_LAST
+    vs16_base = base < 0x80 ? in_ranges?(base, VS16_WIDE) : (entry & WIDTH_VS16_BIT) != 0
+    emoji     = (entry & WIDTH_EMOJI_BIT) != 0
+    regional  = RI_FIRST <= base <= RI_LAST
+    text      = false
+
+    i = len
+    while i < size
+      cp, step = decode(ptr, i)
+      if cp == VS16
+        width = 2 if vs16_base
+      elsif cp == VS15
+        text = true
+      elsif regional && RI_FIRST <= cp <= RI_LAST
+        width = 2
+      else
+        inner = char_width(cp)
+        width = inner if inner > width
+      end
+      i += step
+    end
+
+    width = 1 if text && emoji && width == 2
     width
   end
 
@@ -238,6 +304,18 @@ module GraphemeCellWidth
 
   def measure_each(bytes : Slice(UInt8), & : Slice(UInt8), Int32 ->) : Nil
     each_cluster(bytes) { |cluster| yield cluster, measure(cluster) }
+  end
+
+  def measure_each(span : String, mode : Mode, & : Slice(UInt8), Int32 ->) : Nil
+    measure_each(span.to_slice, mode) { |cluster, width| yield cluster, width }
+  end
+
+  def measure_each(bytes : Slice(UInt8), mode : Mode, & : Slice(UInt8), Int32 ->) : Nil
+    if mode.grapheme?
+      each_cluster(bytes) { |cluster| yield cluster, cluster_width(cluster) }
+    else
+      each_cluster(bytes) { |cluster| yield cluster, measure(cluster) }
+    end
   end
 
   def measure_each(spans : Enumerable(String), & : Slice(UInt8), Int32 ->) : Nil
