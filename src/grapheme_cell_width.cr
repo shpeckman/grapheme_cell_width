@@ -204,6 +204,48 @@ module GraphemeCellWidth
     width
   end
 
+  def joins?(left : String, right : String) : Bool
+    joins?(left.to_slice, right.to_slice)
+  end
+
+  def joins?(left : Slice(UInt8), right : Slice(UInt8)) : Bool
+    {% if flag?(:grapheme_cell_width_debug) %}
+      validate_contract!(left)
+      validate_contract!(right)
+    {% end %}
+
+    return false if left.empty? || right.empty?
+    ptr  = left.to_unsafe
+    size = left.size
+
+    cp, len = decode(ptr, 0)
+    prev_gcb, ep, incb = classify(cp)
+    ri_count   = prev_gcb == GCB_RI ? 1 : 0
+    ext_run    = ep
+    zwj_armed  = false
+    incb_state = incb == INCB_CONSONANT ? 1 : 0
+    i          = len
+
+    while i < size
+      cp, len = decode(ptr, i)
+      gcb, ep, incb = classify(cp)
+      if boundary?(prev_gcb, gcb, ep, ri_count, zwj_armed, incb, incb_state)
+        ri_count   = 0
+        ext_run    = false
+        zwj_armed  = false
+        incb_state = 0
+      end
+      ri_count, ext_run, zwj_armed, incb_state =
+        step(gcb, ep, incb, ri_count, ext_run, zwj_armed, incb_state)
+      prev_gcb = gcb
+      i += len
+    end
+
+    cp, _ = decode(right.to_unsafe, 0)
+    gcb, ep, incb = classify(cp)
+    !boundary?(prev_gcb, gcb, ep, ri_count, zwj_armed, incb, incb_state)
+  end
+
   def width(char : Char) : Int32
     char_width(char.ord.to_u32)
   end
@@ -267,29 +309,8 @@ module GraphemeCellWidth
         incb_state    = 0
       end
 
-      if gcb == GCB_RI
-        ri_count += 1
-      else
-        ri_count = 0
-      end
-      if ep
-        ext_run   = true
-        zwj_armed = false
-      elsif gcb == GCB_EXTEND
-        zwj_armed = false if zwj_armed
-      elsif gcb == GCB_ZWJ && ext_run
-        zwj_armed = true
-        ext_run   = false
-      else
-        ext_run   = false
-        zwj_armed = false
-      end
-      case incb
-      when INCB_CONSONANT then incb_state = 1
-      when INCB_LINKER    then incb_state = 2 if incb_state >= 1
-      when INCB_EXTEND
-      else incb_state = 0
-      end
+      ri_count, ext_run, zwj_armed, incb_state =
+        step(gcb, ep, incb, ri_count, ext_run, zwj_armed, incb_state)
 
       prev_gcb = gcb
       i += len
@@ -395,6 +416,31 @@ module GraphemeCellWidth
       end
     end
     false
+  end
+
+  @[AlwaysInline]
+  private def step(gcb : UInt8, ep : Bool, incb : UInt8, ri_count : Int32, ext_run : Bool,
+                   zwj_armed : Bool, incb_state : Int32) : {Int32, Bool, Bool, Int32}
+    ri_count = gcb == GCB_RI ? ri_count + 1 : 0
+    if ep
+      ext_run   = true
+      zwj_armed = false
+    elsif gcb == GCB_EXTEND
+      zwj_armed = false
+    elsif gcb == GCB_ZWJ && ext_run
+      zwj_armed = true
+      ext_run   = false
+    else
+      ext_run   = false
+      zwj_armed = false
+    end
+    case incb
+    when INCB_CONSONANT then incb_state = 1
+    when INCB_LINKER    then incb_state = 2 if incb_state >= 1
+    when INCB_EXTEND
+    else incb_state = 0
+    end
+    {ri_count, ext_run, zwj_armed, incb_state}
   end
 
   @[AlwaysInline]
